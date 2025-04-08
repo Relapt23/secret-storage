@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import SecretBase
+from src.db.models import SecretBase
 from typing import Optional
 import uuid
 from fastapi import Depends
-from db_config import get_session
+from src.db.db_config import get_session
 
 
 class DBAdapter:
