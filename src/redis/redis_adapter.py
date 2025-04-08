@@ -1,9 +1,10 @@
 from fastapi import Depends
 
-from src.redis.redis_config import get_redis
+from src.redis.redis_config import make_redis
 from redis.asyncio import Redis
 from typing import Optional
 import json
+from src.app.schemas import CachedInfo
 
 
 class RedisAdapter:
@@ -17,14 +18,18 @@ class RedisAdapter:
             ex=60 * 10,
         )
 
-    async def get(self, secret_key: str) -> str | None:
+    async def get(self, secret_key: str) -> Optional[CachedInfo]:
         cache = await self.client.get(secret_key)
-        secret_in_cache = await json.loads(cache)
-        return secret_in_cache
+        if cache is None:
+            return None
+        secret_in_cache = json.loads(cache)
+        return CachedInfo(
+            secret=secret_in_cache.get("secret"), ttl=secret_in_cache.get("ttl")
+        )
 
     def delete(self, secret_key: str) -> bool:
         pass
 
 
-def get_redis_adapter(redis_client: Redis = Depends(get_redis)) -> RedisAdapter:
+def make_redis_adapter(redis_client: Redis = Depends(make_redis)) -> RedisAdapter:
     return RedisAdapter(redis_client)

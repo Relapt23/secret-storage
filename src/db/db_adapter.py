@@ -3,7 +3,7 @@ from src.db.models import SecretBase
 from typing import Optional
 import uuid
 from fastapi import Depends
-from src.db.db_config import get_session
+from src.db.db_config import make_session
 
 
 class DBAdapter:
@@ -35,5 +35,5 @@ class DBAdapter:
         pass
 
 
-def get_db_adapter(session: AsyncSession = Depends(get_session)) -> DBAdapter:
+def make_db_adapter(session: AsyncSession = Depends(make_session)) -> DBAdapter:
     return DBAdapter(session)

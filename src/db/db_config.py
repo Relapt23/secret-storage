@@ -19,7 +19,7 @@ engine = create_async_engine(
 sess = async_sessionmaker(engine)
 
 
-async def get_session():
+async def make_session():
     async with sess() as session:
         yield session
 
