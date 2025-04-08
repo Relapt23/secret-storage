@@ -4,7 +4,7 @@ from src.redis.redis_config import make_redis
 from redis.asyncio import Redis
 from typing import Optional
 import json
-from src.app.schemas import CachedInfo
+from src.app.schemas import CacheSecret
 
 
 class RedisAdapter:
@@ -18,12 +18,12 @@ class RedisAdapter:
             ex=60 * 10,
         )
 
-    async def get(self, secret_key: str) -> Optional[CachedInfo]:
+    async def get(self, secret_key: str) -> Optional[CacheSecret]:
         cache = await self.client.get(secret_key)
         if cache is None:
             return None
         secret_in_cache = json.loads(cache)
-        return CachedInfo(
+        return CacheSecret(
             secret=secret_in_cache.get("secret"), ttl=secret_in_cache.get("ttl")
         )
 

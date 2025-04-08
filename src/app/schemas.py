@@ -11,6 +11,6 @@ class Secret(BaseModel):
 
 
 @dataclass
-class CachedInfo:
+class CacheSecret:
     secret: str
     ttl: Optional[int]
