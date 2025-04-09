@@ -27,8 +27,9 @@ class RedisAdapter:
             secret=secret_in_cache.get("secret"), ttl=secret_in_cache.get("ttl")
         )
 
-    def delete(self, secret_key: str) -> bool:
-        pass
+    async def delete(self, secret_key: str) -> bool:
+        deleted = await self.client.delete(secret_key)
+        return deleted == 1
 
 
 def make_redis_adapter(redis_client: Redis = Depends(make_redis)) -> RedisAdapter:
