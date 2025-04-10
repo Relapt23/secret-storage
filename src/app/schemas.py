@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -14,3 +13,11 @@ class Secret(BaseModel):
 class CacheSecret:
     secret: str
     ttl: Optional[int]
+
+
+class SecretInfo(BaseModel):
+    secret: str
+
+
+class SecretKeyInfo(BaseModel):
+    secret_key: str

@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from src.db.models import SecretBase
 from typing import Optional
 import uuid
@@ -28,11 +29,24 @@ class DBAdapter:
         await self.session.commit()
         return secret_key
 
-    def get(self, secret_key: str) -> str | None:
-        pass
+    async def get(self, secret_key: str) -> str | None:
+        query = await self.session.execute(
+            select(SecretBase).where(SecretBase.secret_key == secret_key)
+        )
+        secret = query.scalar_one_or_none()
+        if secret:
+            return secret.secret
 
-    def delete(self, secret_key: str) -> bool:
-        pass
+    async def delete(self, secret_key: str) -> bool:
+        query = await self.session.execute(
+            select(SecretBase).where(SecretBase.secret_key == secret_key)
+        )
+        secret_obj = query.scalar_one_or_none()
+        if not secret_obj:
+            return False
+        await self.session.delete(secret_obj)
+        await self.session.commit()
+        return True
 
 
 def make_db_adapter(session: AsyncSession = Depends(make_session)) -> DBAdapter:
