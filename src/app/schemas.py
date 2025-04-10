@@ -21,3 +21,7 @@ class SecretInfo(BaseModel):
 
 class SecretKeyInfo(BaseModel):
     secret_key: str
+
+
+class DeletedSecret(BaseModel):
+    status: str

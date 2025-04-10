@@ -1,6 +1,6 @@
 import base64
 from fastapi import APIRouter, Depends, HTTPException
-from src.app.schemas import Secret, SecretInfo, SecretKeyInfo
+from src.app.schemas import Secret, SecretInfo, SecretKeyInfo, DeletedSecret
 from src.db.db_adapter import DBAdapter, make_db_adapter
 from src.redis.redis_adapter import RedisAdapter, make_redis_adapter
 
@@ -39,3 +39,16 @@ async def get_secret(
         return SecretInfo(secret=secret_in_db)
 
     raise HTTPException(detail="secret_not_found", status_code=404)
+
+
+@router.delete("/secret/{secret_key}")
+async def delete_secret(
+    secret_key: str,
+    db_adapter: DBAdapter = Depends(make_db_adapter),
+    redis_adapter: RedisAdapter = Depends(make_redis_adapter),
+) -> DeletedSecret:
+    deleted_cache_secret = await redis_adapter.delete(secret_key)
+    deleted_db_secret = await db_adapter.delete(secret_key)
+    if deleted_cache_secret and deleted_db_secret:
+        return DeletedSecret(status="secret_deleted")
+    raise HTTPException(status_code=404, detail="secret_not_deleted")
