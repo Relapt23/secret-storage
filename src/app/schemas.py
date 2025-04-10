@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Optional
-from fastapi import HTTPException
 from pydantic import BaseModel
 
 
@@ -16,6 +15,9 @@ class CacheSecret:
     ttl: Optional[int]
 
 
-class CustomException(HTTPException):
-    def __init__(self, detail: str, status_code: int):
-        super().__init__(status_code=status_code, detail=detail)
+class SecretInfo(BaseModel):
+    secret: str
+
+
+class SecretKeyInfo(BaseModel):
+    secret_key: str

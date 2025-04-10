@@ -36,8 +36,6 @@ class DBAdapter:
         secret = query.scalar_one_or_none()
         if secret:
             return secret.secret
-        else:
-            return None
 
     async def delete(self, secret_key: str) -> bool:
         query = await self.session.execute(
