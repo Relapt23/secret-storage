@@ -7,12 +7,12 @@ from src.redis.redis_adapter import RedisAdapter, make_redis_adapter
 router = APIRouter()
 
 
-@router.post("/secret", response_model=SecretKeyInfo)
+@router.post("/secret")
 async def create_secret(
     secret: Secret,
     db_adapter: DBAdapter = Depends(make_db_adapter),
     redis_adapter: RedisAdapter = Depends(make_redis_adapter),
-):
+) -> SecretKeyInfo:
     encoded_secret = base64.b64encode(secret.secret.encode("utf-8")).decode("utf-8")
     secret_key = await db_adapter.create(
         encoded_secret, secret.passphrase, secret.ttl_seconds
@@ -21,12 +21,12 @@ async def create_secret(
     return SecretKeyInfo(secret_key=secret_key)
 
 
-@router.get("/secret/{secret_key}", response_model=SecretInfo)
+@router.get("/secret/{secret_key}")
 async def get_secret(
     secret_key: str,
     db_adapter: DBAdapter = Depends(make_db_adapter),
     redis_adapter: RedisAdapter = Depends(make_redis_adapter),
-):
+) -> SecretInfo:
     secret_in_cache = await redis_adapter.get(secret_key)
     if secret_in_cache:
         await redis_adapter.delete(secret_key)
