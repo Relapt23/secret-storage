@@ -11,19 +11,21 @@ class DBConfig:
     DATABASE: str = os.getenv("POSTGRES_DB")
 
 
-engine = create_async_engine(
-    f"postgresql+asyncpg://{DBConfig.USER}:{DBConfig.PASSWORD}@{DBConfig.HOST}:{DBConfig.PORT}/{DBConfig.DATABASE}",
-    echo=True,
-)
-
-sess = async_sessionmaker(engine)
+async def get_engine():
+    return create_async_engine(
+        f"postgresql+asyncpg://{DBConfig.USER}:{DBConfig.PASSWORD}@{DBConfig.HOST}:{DBConfig.PORT}/{DBConfig.DATABASE}",
+        echo=True,
+    )
 
 
 async def make_session():
+    engine = await get_engine()
+    sess = async_sessionmaker(engine, expire_on_commit=False)
     async with sess() as session:
         yield session
 
 
 async def init_db():
+    engine = await get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
