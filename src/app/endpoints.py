@@ -43,7 +43,9 @@ async def get_secret(
 
     secret_in_db = await db_adapter.get(secret_key)
     if secret_in_db:
-        decoded_secret = base64.b64decode(secret_in_db.secret.encode("utf-8")).decode("utf-8")
+        decoded_secret = base64.b64decode(secret_in_db.secret.encode("utf-8")).decode(
+            "utf-8"
+        )
         await db_adapter.delete(secret_key)
 
         return SecretInfo(secret=decoded_secret)

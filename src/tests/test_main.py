@@ -5,6 +5,7 @@ from src.db.db_adapter import DBAdapter
 from src.redis.redis_adapter import RedisAdapter
 from src.app.schemas import Secret, SecretKeyInfo, CacheSecret, SecretInfo
 from src.app.endpoints import create_secret, get_secret
+from fastapi import HTTPException
 
 
 @pytest.mark.asyncio
@@ -77,3 +78,27 @@ async def test_get_secret_in_db():
     # then
     assert res == SecretInfo(secret="Meow")
     mock_db_adapter.get.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_get_secret_not_found():
+    # given
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.get = AsyncMock(return_value=None)
+
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.get = AsyncMock(return_value=None)
+
+    # when
+    with pytest.raises(HTTPException) as exception:
+        await get_secret(
+            secret_key="missing_key",
+            db_adapter=mock_db_adapter,
+            redis_adapter=mock_redis_adapter,
+        )
+
+    # then
+    assert exception.value.status_code == 404
+    assert exception.value.detail == "secret_not_found"
+    mock_redis_adapter.get.assert_called_once_with("missing_key")
+    mock_db_adapter.get.assert_called_once_with("missing_key")
