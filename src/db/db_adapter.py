@@ -29,13 +29,12 @@ class DBAdapter:
         await self.session.commit()
         return secret_key
 
-    async def get(self, secret_key: str) -> str | None:
+    async def get(self, secret_key: str) -> SecretBase | None:
         query = await self.session.execute(
             select(SecretBase).where(SecretBase.secret_key == secret_key)
         )
         secret = query.scalar_one_or_none()
-        if secret:
-            return secret.secret
+        return secret
 
     async def delete(self, secret_key: str) -> bool:
         query = await self.session.execute(
