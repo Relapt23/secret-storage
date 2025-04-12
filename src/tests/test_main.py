@@ -3,8 +3,14 @@ import base64
 from unittest.mock import AsyncMock, MagicMock, Mock
 from src.db.db_adapter import DBAdapter
 from src.redis.redis_adapter import RedisAdapter
-from src.app.schemas import Secret, SecretKeyInfo, CacheSecret, SecretInfo
-from src.app.endpoints import create_secret, get_secret
+from src.app.schemas import (
+    Secret,
+    SecretKeyInfo,
+    CacheSecret,
+    SecretInfo,
+    DeletedSecret,
+)
+from src.app.endpoints import create_secret, get_secret, delete_secret
 from fastapi import HTTPException
 
 
@@ -92,7 +98,7 @@ async def test_get_secret_not_found():
     # when
     with pytest.raises(HTTPException) as exception:
         await get_secret(
-            secret_key="missing_key",
+            secret_key="test_key",
             db_adapter=mock_db_adapter,
             redis_adapter=mock_redis_adapter,
         )
@@ -100,5 +106,95 @@ async def test_get_secret_not_found():
     # then
     assert exception.value.status_code == 404
     assert exception.value.detail == "secret_not_found"
-    mock_redis_adapter.get.assert_called_once_with("missing_key")
-    mock_db_adapter.get.assert_called_once_with("missing_key")
+    mock_redis_adapter.get.assert_called_once_with("test_key")
+    mock_db_adapter.get.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_delete_secret_in_cache():
+    # given
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.delete = AsyncMock(return_value=True)
+
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.delete = AsyncMock(return_value=None)
+
+    # when
+    res = await delete_secret(
+        secret_key="test_key",
+        db_adapter=mock_db_adapter,
+        redis_adapter=mock_redis_adapter,
+    )
+
+    # then
+    assert res == DeletedSecret(status="secret_deleted")
+    mock_redis_adapter.delete.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_delete_secret_in_db():
+    # given
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.delete = AsyncMock(return_value=False)
+
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.delete = AsyncMock(return_value=True)
+
+    # when
+    res = await delete_secret(
+        secret_key="test_key",
+        db_adapter=mock_db_adapter,
+        redis_adapter=mock_redis_adapter,
+    )
+
+    # then
+    assert res == DeletedSecret(status="secret_deleted")
+    mock_redis_adapter.delete.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_delete_secret_in_db_and_cache():
+    # given
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.delete = AsyncMock(return_value=True)
+
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.delete = AsyncMock(return_value=True)
+
+    # when
+    res = await delete_secret(
+        secret_key="test_key",
+        db_adapter=mock_db_adapter,
+        redis_adapter=mock_redis_adapter,
+    )
+
+    # then
+    assert res == DeletedSecret(status="secret_deleted")
+    mock_redis_adapter.delete.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_delete_secret_not_found():
+    # given
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.delete = AsyncMock(return_value=False)
+
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.delete = AsyncMock(return_value=False)
+
+    # when
+    with pytest.raises(HTTPException) as exception:
+        await delete_secret(
+            secret_key="test_key",
+            db_adapter=mock_db_adapter,
+            redis_adapter=mock_redis_adapter,
+        )
+
+    # then
+    assert exception.value.status_code == 404
+    assert exception.value.detail == "secret_not_deleted"
+    mock_redis_adapter.delete.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
