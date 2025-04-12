@@ -11,10 +11,12 @@ class RedisAdapter:
     def __init__(self, client: Redis):
         self.client = client
 
-    async def update(self, secret_key: str, secret: str, ttl: Optional[int] = None):
+    async def update(
+        self, secret_key: str, secret: str, ttl_seconds: Optional[int] = None
+    ):
         await self.client.set(
             name=secret_key,
-            value=json.dumps({"secret": secret, "ttl": ttl}),
+            value=json.dumps({"secret": secret, "ttl": ttl_seconds}),
             ex=60 * 10,
         )
 
