@@ -6,13 +6,14 @@ from pydantic import BaseModel
 class Secret(BaseModel):
     secret: str
     passphrase: str | None = None
-    ttl_seconds: int | None = None
+    expiration_date: int | None = None
 
 
 @dataclass
 class CacheSecret:
     secret: str
-    ttl: Optional[int]
+    passphrase: Optional[str]
+    expiration_date: Optional[int]
 
 
 class SecretInfo(BaseModel):

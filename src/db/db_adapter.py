@@ -15,14 +15,14 @@ class DBAdapter:
         self,
         secret: str,
         passphrase: Optional[str],
-        ttl_seconds: Optional[int],
+        expiration_date: Optional[int],
     ) -> str:
         secret_key = str(uuid.uuid4())
         secret_info = SecretBase(
             secret_key=secret_key,
             secret=secret,
             passphrase=passphrase,
-            ttl_seconds=ttl_seconds,
+            expiration_date=expiration_date,
         )
 
         self.session.add(secret_info)
@@ -46,6 +46,7 @@ class DBAdapter:
         await self.session.delete(secret_obj)
         await self.session.commit()
         return True
+
 
 
 def make_db_adapter(session: AsyncSession = Depends(make_session)) -> DBAdapter:

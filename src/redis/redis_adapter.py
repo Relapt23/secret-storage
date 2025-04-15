@@ -12,11 +12,21 @@ class RedisAdapter:
         self.client = client
 
     async def update(
-        self, secret_key: str, secret: str, ttl_seconds: Optional[int] = None
+        self,
+        secret_key: str,
+        secret: str,
+        passphrase: str | None,
+        expiration_date: Optional[int] = None,
     ):
         await self.client.set(
             name=secret_key,
-            value=json.dumps({"secret": secret, "ttl": ttl_seconds}),
+            value=json.dumps(
+                {
+                    "secret": secret,
+                    "passphrase": passphrase,
+                    "expiration_date": expiration_date,
+                }
+            ),
             ex=60 * 10,
         )
 
@@ -26,7 +36,9 @@ class RedisAdapter:
             return None
         secret_in_cache = json.loads(cache)
         return CacheSecret(
-            secret=secret_in_cache.get("secret"), ttl=secret_in_cache.get("ttl")
+            secret=secret_in_cache.get("secret"),
+            passphrase=secret_in_cache.get("passphrase"),
+            expiration_date=secret_in_cache.get("expiration_date"),
         )
 
     async def delete(self, secret_key: str) -> bool:
