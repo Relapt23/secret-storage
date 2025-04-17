@@ -1,7 +1,12 @@
+import uuid
+
 import pytest
 import base64
-from unittest.mock import AsyncMock, MagicMock, Mock
+from datetime import datetime, UTC
+from freezegun import freeze_time
+from unittest.mock import AsyncMock, MagicMock
 from src.db.db_adapter import DBAdapter
+from src.db.models import SecretBase
 from src.redis.redis_adapter import RedisAdapter
 from src.app.schemas import (
     Secret,
@@ -14,8 +19,14 @@ from src.app.endpoints import create_secret, get_secret, delete_secret
 from fastapi import HTTPException
 
 
+@pytest.fixture
+def frozen_time():
+    with freeze_time(datetime.fromtimestamp(1744870851, UTC)) as frozen:
+        yield frozen
+
+
 @pytest.mark.asyncio
-async def test_create_secret():
+async def test_create_secret(frozen_time):
     # given
     mock_db_adapter = MagicMock(spec=DBAdapter)
     mock_db_adapter.create = AsyncMock(return_value="test_key")
@@ -24,7 +35,7 @@ async def test_create_secret():
 
     # when
     res = await create_secret(
-        secret=Secret(secret="Meow", passphrase=None, ttl_seconds=300),
+        secret=Secret(secret="Meow", passphrase=None, ttl_seconds=3),
         db_adapter=mock_db_adapter,
         redis_adapter=mock_redis_adapter,
     )
@@ -32,12 +43,13 @@ async def test_create_secret():
     # then
     assert res == SecretKeyInfo(secret_key="test_key")
     mock_db_adapter.create.assert_called_once_with(
-        base64.b64encode(b"Meow").decode(), None, 300
+        base64.b64encode(b"Meow").decode(), None, 1744870854.0
     )
     mock_redis_adapter.update.assert_called_once_with(
         "test_key",
         base64.b64encode(b"Meow").decode(),
-        300,
+        None,
+        1744870854.0,
     )
 
 
@@ -46,12 +58,13 @@ async def test_get_secret_in_cache():
     # given
     encoded = base64.b64encode(b"Meow").decode("utf-8")
     mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.delete = AsyncMock(return_value=True)
 
     mock_redis_adapter = MagicMock(spec=RedisAdapter)
     mock_redis_adapter.get = AsyncMock(
-        return_value=CacheSecret(secret=encoded, ttl=None)
+        return_value=CacheSecret(secret=encoded, passphrase=None, expiration_date=None)
     )
-
+    mock_redis_adapter.delete = AsyncMock(return_value=True)
     # when
     res = await get_secret(
         secret_key="test_key",
@@ -62,14 +75,22 @@ async def test_get_secret_in_cache():
     # then
     assert res == SecretInfo(secret="Meow")
     mock_redis_adapter.get.assert_called_once_with("test_key")
+    mock_redis_adapter.delete.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
 
 
 @pytest.mark.asyncio
 async def test_get_secret_in_db():
     # given
+    key = uuid.uuid4()
     encoded = base64.b64encode(b"Meow").decode("utf-8")
     mock_db_adapter = MagicMock(spec=DBAdapter)
-    mock_db_adapter.get = AsyncMock(return_value=Mock(secret=encoded))
+    mock_db_adapter.get = AsyncMock(
+        return_value=SecretBase(
+            secret_key=key, secret=encoded, passphrase=None, expiration_date=None
+        )
+    )
+    mock_db_adapter.delete = AsyncMock(return_value=True)
 
     mock_redis_adapter = MagicMock(spec=RedisAdapter)
     mock_redis_adapter.get = AsyncMock(return_value=None)
@@ -84,6 +105,7 @@ async def test_get_secret_in_db():
     # then
     assert res == SecretInfo(secret="Meow")
     mock_db_adapter.get.assert_called_once_with("test_key")
+    mock_db_adapter.delete.assert_called_once_with("test_key")
 
 
 @pytest.mark.asyncio

@@ -24,7 +24,7 @@ async def create_secret(
         encoded_secret, secret.passphrase, expiration_date
     )
     await redis_adapter.update(
-        secret_key, secret.passphrase, encoded_secret, expiration_date
+        secret_key, encoded_secret, secret.passphrase, expiration_date
     )
 
     return SecretKeyInfo(secret_key=secret_key)
@@ -40,7 +40,7 @@ async def get_secret(
     if secret_in_cache:
         if (
             secret_in_cache.expiration_date
-            and datetime.now().timestamp() <= secret_in_cache.expiration_date
+            and datetime.now().timestamp() >= secret_in_cache.expiration_date
         ):
             await redis_adapter.delete(secret_key)
             await db_adapter.delete(secret_key)
@@ -59,7 +59,7 @@ async def get_secret(
     if secret_in_db:
         if (
             secret_in_db.expiration_date
-            and datetime.now().timestamp() <= secret_in_db.expiration_date
+            and datetime.now().timestamp() >= secret_in_db.expiration_date
         ):
             await db_adapter.delete(secret_key)
             raise HTTPException(detail="secret_not_found", status_code=404)
@@ -83,11 +83,15 @@ async def delete_secret(
 ) -> DeletedSecret:
     secret_in_cache = await redis_adapter.get(secret_key)
     secret_in_db = await db_adapter.get(secret_key)
+
+    if not secret_in_cache and not secret_in_db:
+        raise HTTPException(status_code=404, detail="secret_not_found")
+
     if (
         secret_in_cache.passphrase != passphrase
-        or secret_in_db.passphrase != passphrase
+        and secret_in_db.passphrase != passphrase
     ):
-        raise HTTPException(status_code=404, detail="secret_not_deleted")
+        raise HTTPException(status_code=403, detail="invalid_passphrase")
 
     deleted_cache_secret = await redis_adapter.delete(secret_key)
     deleted_db_secret = await db_adapter.delete(secret_key)

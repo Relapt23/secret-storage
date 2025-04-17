@@ -2,4 +2,4 @@ pytest-asyncio
 aiosqlite
 httpx
 greenlet
-dotenv
+freezegun
