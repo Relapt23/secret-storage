@@ -230,9 +230,47 @@ async def test_delete_secret_not_found():
     # given
     mock_redis_adapter = MagicMock(spec=RedisAdapter)
     mock_redis_adapter.delete = AsyncMock(return_value=False)
+    mock_redis_adapter.get = AsyncMock(return_value=None)
 
     mock_db_adapter = MagicMock(spec=DBAdapter)
     mock_db_adapter.delete = AsyncMock(return_value=False)
+    mock_db_adapter.get = AsyncMock(return_value=None)
+
+    # when
+    with pytest.raises(HTTPException) as exception:
+        await delete_secret(
+            secret_key="test_key",
+            passphrase="test_word",
+            db_adapter=mock_db_adapter,
+            redis_adapter=mock_redis_adapter,
+        )
+
+    # then
+    assert exception.value.status_code == 404
+    assert exception.value.detail == "secret_not_found"
+    mock_redis_adapter.get.assert_called_once_with("test_key")
+    mock_db_adapter.get.assert_called_once_with("test_key")
+
+
+@pytest.mark.asyncio
+async def test_delete_passphrase_error():
+    # given
+    encoded = base64.b64encode(b"Meow").decode("utf-8")
+    mock_redis_adapter = MagicMock(spec=RedisAdapter)
+    mock_redis_adapter.get = AsyncMock(
+        return_value=CacheSecret(
+            secret=encoded, passphrase="incorrect_word", expiration_date=300
+        )
+    )
+    mock_db_adapter = MagicMock(spec=DBAdapter)
+    mock_db_adapter.get = AsyncMock(
+        return_value=SecretBase(
+            secret_key="test_key",
+            secret=encoded,
+            passphrase="incorrect_word",
+            expiration_date=300,
+        )
+    )
 
     # when
     with pytest.raises(HTTPException) as exception:
@@ -246,3 +284,5 @@ async def test_delete_secret_not_found():
     # then
     assert exception.value.status_code == 403
     assert exception.value.detail == "invalid_passphrase"
+    mock_redis_adapter.get.assert_called_once_with("test_key")
+    mock_db_adapter.get.assert_called_once_with("test_key")
