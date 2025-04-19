@@ -12,7 +12,8 @@ class Secret(BaseModel):
 @dataclass
 class CacheSecret:
     secret: str
-    ttl: Optional[int]
+    passphrase: Optional[str]
+    expiration_date: Optional[int]
 
 
 class SecretInfo(BaseModel):

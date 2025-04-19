@@ -18,4 +18,4 @@ class SecretBase(Base):
     )
     secret: Mapped[str]
     passphrase: Mapped[str | None] = mapped_column(nullable=True)
-    ttl_seconds: Mapped[int | None] = mapped_column(nullable=True)
+    expiration_date: Mapped[int | None] = mapped_column(nullable=True)
