@@ -15,27 +15,26 @@ class DBAdapter:
         self,
         secret: str,
         passphrase: Optional[str],
-        ttl_seconds: Optional[int],
+        expiration_date: Optional[int],
     ) -> str:
         secret_key = str(uuid.uuid4())
         secret_info = SecretBase(
             secret_key=secret_key,
             secret=secret,
             passphrase=passphrase,
-            ttl_seconds=ttl_seconds,
+            expiration_date=expiration_date,
         )
 
         self.session.add(secret_info)
         await self.session.commit()
         return secret_key
 
-    async def get(self, secret_key: str) -> str | None:
+    async def get(self, secret_key: str) -> SecretBase | None:
         query = await self.session.execute(
             select(SecretBase).where(SecretBase.secret_key == secret_key)
         )
         secret = query.scalar_one_or_none()
-        if secret:
-            return secret.secret
+        return secret
 
     async def delete(self, secret_key: str) -> bool:
         query = await self.session.execute(
@@ -47,6 +46,7 @@ class DBAdapter:
         await self.session.delete(secret_obj)
         await self.session.commit()
         return True
+
 
 
 def make_db_adapter(session: AsyncSession = Depends(make_session)) -> DBAdapter:
